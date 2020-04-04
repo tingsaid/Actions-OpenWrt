@@ -13,3 +13,5 @@ echo '去除默认bootstrap主题'
 sed -i '/set luci.main.mediaurlbase=\/luci-static\/bootstrap/d' feeds/luci/themes/luci-theme-bootstrap/root/etc/uci-defaults/30_luci-theme-bootstrap
 echo '修改默认主题'
 sed -i 's/config internal themes/config internal themes\n    option Argon  \"\/luci-static\/argon\"/g' feeds/luci/modules/luci-base/root/etc/config/luci
+echo 'luci-theme-argon'
+git clone https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon
