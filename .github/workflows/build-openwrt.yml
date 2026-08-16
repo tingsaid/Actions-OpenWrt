@@ -8,9 +8,7 @@
 name: Build OpenWrt
 
 on:
-  repository_dispatch:
-  workflow_dispatch:
-  edge:
+  workflow_dispatch: # 👈 确保完全支持手动点击按钮触发
   push:
     branches:
       - master
