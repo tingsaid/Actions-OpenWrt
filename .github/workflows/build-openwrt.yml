@@ -1,27 +1,11 @@
-#=================================================
-# https://github.com
-# Description: Build OpenWrt using GitHub Actions
-# Lisence: MIT
-# Author: P3TERX
-# Blog: https://p3terx.com
-#=================================================
 name: Build OpenWrt
 
 on:
-  workflow_dispatch: # 👈 确保完全支持手动点击按钮触发
+  workflow_dispatch:
   push:
     branches:
       - master
       - main
-
-env:
-  REPO_URL: https://github.com
-  REPO_BRANCH: master
-  CONFIG_FILE: .config
-  DIY_SH: diy.sh
-  UPLOAD_BIN_DIR: false
-  UPLOAD_FIRMWARE: true
-  TZ: Asia/Shanghai
 
 jobs:
   build:
@@ -41,7 +25,7 @@ jobs:
         sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz mkisofs msmtp nano p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply python3-docutils qemu-utils rsync scons squashfs-tools subversion swig texinfo u-boot-tools upx-ucl unzip vim wget xmlto xz-utils zlib1g-dev
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
-        sudo timedatectl set-timezone "$TZ"
+        sudo timedatectl set-timezone "Asia/Shanghai"
         sudo mkdir -p /workdir
         sudo chown $USER:$GROUPS /workdir
 
@@ -49,7 +33,7 @@ jobs:
       working-directory: /workdir
       run: |
         df -h
-        git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
+        git clone --depth 1 https://github.com -b master openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
     - name: Update feeds
@@ -61,10 +45,10 @@ jobs:
     - name: Load custom configuration
       run: |
         [ -e files ] && mv files openwrt/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-        chmod +x $DIY_SH
+        [ -e .config ] && mv .config openwrt/.config
+        chmod +x diy.sh
         cd openwrt
-        ../$DIY_SH
+        ../diy.sh
 
     - name: Download package
       id: package
@@ -79,29 +63,13 @@ jobs:
       id: compile
       run: |
         cd openwrt
-        echo -e "$(nproc) 线程开始核心编译..."
-        # 核心修改：如果多线程编译失败，自动切换为单线程(j1)并输出详细日志(V=s)
+        echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 V=s
-        
-        # 检查编译是否真的成功生成了目标目录
-        if [ -d "bin/targets" ]; then
-          echo "status=success" >> $GITHUB_OUTPUT
-        else
-          echo "编译未成功生成固件产物，请检查上方单线程报错信息！"
-          exit 1
-        fi
-
-
-    - name: Upload bin directory
-      uses: actions/upload-artifact@v4
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
-      with:
-        name: OpenWrt_bin
-        path: openwrt/bin
+        echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Organize files
       id: organize
-      if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
+      if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
         rm -rf packages
